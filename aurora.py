@@ -14,6 +14,7 @@ import queue
 from datetime import datetime
 from collections import deque
 import ollama
+import pyperclip
 
 # COLORS
 BLUE = 1
@@ -41,6 +42,10 @@ class InteractiveAurora:
         # Threading
         self.stream_queue = queue.Queue()
         self.should_exit = False
+
+        # Clipboard
+        self.clipboard_msg = ""
+        self.clipboard_msg_time = 0
 
         # Setup curses
         curses.start_color()
@@ -78,6 +83,11 @@ class InteractiveAurora:
         # Status line with time
         status = f"Model: {self.model} │ π×φ: 5.083 │ {datetime.now().strftime('%H:%M:%S')}"
         self.safe_addstr(4, 2, status, curses.color_pair(CYAN))
+
+        # Clipboard flash message
+        if self.clipboard_msg and time.time() - self.clipboard_msg_time < 2:
+            self.safe_addstr(4, self.w - len(self.clipboard_msg) - 3, self.clipboard_msg,
+                           curses.color_pair(YELLOW) | curses.A_BOLD)
 
     def draw_chat(self):
         """Draw flowing messages"""
@@ -158,7 +168,7 @@ class InteractiveAurora:
 
     def draw_footer(self):
         """Help line"""
-        footer = "Enter: Send │ Ctrl+C: Quit │ Ctrl+L: Clear │ Backspace: Delete"
+        footer = "Enter: Send │ Tab: Copy AI │ Ctrl+V: Paste │ Ctrl+L: Clear │ Ctrl+C: Quit"
         self.safe_addstr(self.h - 2, 0, footer, curses.color_pair(DIM))
 
     def safe_addstr(self, y, x, text, *args):
@@ -245,6 +255,29 @@ class InteractiveAurora:
         elif key == 127 or key == curses.KEY_BACKSPACE:  # Backspace
             if self.input_line:
                 self.input_line = self.input_line[:-1]
+
+        elif key == 9:  # Tab - Copy last AI response
+            for msg in reversed(list(self.chat_history)):
+                if msg["role"] == "assistant":
+                    try:
+                        pyperclip.copy(msg["text"])
+                        self.clipboard_msg = "📋 Copied!"
+                        self.clipboard_msg_time = time.time()
+                    except:
+                        self.clipboard_msg = "❌ Copy failed"
+                        self.clipboard_msg_time = time.time()
+                    break
+
+        elif key == 22:  # Ctrl+V - Paste
+            try:
+                clipboard = pyperclip.paste()
+                if clipboard:
+                    self.input_line += clipboard
+                    self.clipboard_msg = "📋 Pasted!"
+                    self.clipboard_msg_time = time.time()
+            except:
+                self.clipboard_msg = "❌ Paste failed"
+                self.clipboard_msg_time = time.time()
 
         elif key == 12:  # Ctrl+L - Clear
             self.chat_history.clear()
