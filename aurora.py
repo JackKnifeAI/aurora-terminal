@@ -68,17 +68,23 @@ class InteractiveAurora:
         self.messages = []
 
     def draw_header(self):
-        """Sick animated header"""
-        lines = [
-            "╔══════════════════════════════════════════════════════════════╗",
-            "║    🌗  A U R O R A   T E R M I N A L  ⚡ INTERACTIVE    ║",
-            "║         Real-Time Streaming  •  Full Bidirectional          ║",
-            "╚══════════════════════════════════════════════════════════════╝"
-        ]
+        """Sick animated header - adjustable width"""
+        # Dynamic width
+        width = self.w - 2
+
+        # Build header lines
+        top_line = "╔" + "═" * (width - 2) + "╗"
+        title_text = "🌗  A U R O R A   T E R M I N A L  ⚡ INTERACTIVE"
+        title_line = "║" + title_text.center(width - 2) + "║"
+        sub_text = "Real-Time Streaming  •  Full Bidirectional"
+        sub_line = "║" + sub_text.center(width - 2) + "║"
+        bottom_line = "╚" + "═" * (width - 2) + "╝"
+
+        lines = [top_line, title_line, sub_line, bottom_line]
 
         for i, line in enumerate(lines):
             color = BLUE if i % 2 == 0 else MAGENTA
-            self.safe_addstr(i, 0, line, curses.color_pair(color) | curses.A_BOLD)
+            self.safe_addstr(i, 0, line[:self.w-1], curses.color_pair(color) | curses.A_BOLD)
 
         # Status line with time
         status = f"Model: {self.model} │ π×φ: 5.083 │ {datetime.now().strftime('%H:%M:%S')}"
@@ -101,13 +107,13 @@ class InteractiveAurora:
             role, text = msg["role"], msg["text"]
 
             if role == "user":
-                prefix = "YOU ► "
+                prefix = "A.G.C ► "
                 color = BLUE
             else:
-                prefix = "AI  ► "
+                prefix = "AI    ► "
                 color = MAGENTA
 
-            # Word wrap
+            # Word wrap - keep prefix on every line
             words = text.split()
             current_line = ""
 
@@ -115,9 +121,7 @@ class InteractiveAurora:
                 test_line = current_line + word + " "
                 if len(test_line) > self.w - 12:
                     if current_line:
-                        visible_lines.append((prefix if not current_line else "      ",
-                                            current_line.rstrip(), color))
-                        prefix = "      "
+                        visible_lines.append((prefix, current_line.rstrip(), color))
                     current_line = word + " "
                 else:
                     current_line = test_line
